@@ -120,9 +120,9 @@ const PacketVisual = ({ packet, targets, onComplete }) => {
             className={`absolute z-30 flex items-center justify-center`}
         >
             {/* The Packet Shape (Rectangle) */}
-            <div className={`w-8 h-5 rounded-sm flex items-center justify-center ${isBlocked ? 'bg-red-600 text-red-600' : colorClass} ${isBlocked ? 'shadow-[0_0_25px_rgba(220,38,38,0.9)]' : shadowClass} ${trailClass} relative border border-white/20`}>
-                <div className="w-full h-[1px] bg-black/20 absolute top-1/2 transform -translate-y-1/2"></div>
-                <div className="w-[1px] h-full bg-black/20 absolute left-1/2 transform -translate-x-1/2"></div>
+            <div className={`w-12 h-8 rounded-sm flex items-center justify-center ${isBlocked ? 'bg-red-600 text-red-600' : colorClass} ${isBlocked ? 'shadow-[0_0_25px_rgba(220,38,38,0.9)]' : shadowClass} ${trailClass} relative border border-white/20`}>
+                <div className="w-full h-[2px] bg-black/20 absolute top-1/2 transform -translate-y-1/2"></div>
+                <div className="w-[2px] h-full bg-black/20 absolute left-1/2 transform -translate-x-1/2"></div>
             </div>
 
             {/* Floating Label */}
