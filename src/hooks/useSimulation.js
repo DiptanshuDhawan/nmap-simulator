@@ -113,6 +113,9 @@ export const useSimulation = () => {
           const os = index % 2 === 0 ? 'Linux 5.4' : 'Windows 10';
           const host = new Host(ip, 'target', os);
           
+          // Randomly set some hosts as dead (25% chance of being down)
+          host.isAlive = Math.random() > 0.25;
+          
           if (ip.endsWith('.1') || ip.endsWith('.100') || ip.endsWith('.254')) {
               host.addPort(80, 'open', 'http');
               host.addPort(443, 'closed', 'https');

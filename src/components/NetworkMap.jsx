@@ -13,8 +13,22 @@ const PacketVisual = ({ packet, targets, onComplete }) => {
         targetIndex = targets.findIndex(t => t.ip === packet.source.ip);
     }
     if (targetIndex === -1) targetIndex = 0;
-    const step = 80 / (totalTargets || 1);
-    const targetY = 10 + (step * targetIndex) + (step / 2);
+
+    // Calculate target position - star topology
+    let targetX, targetY;
+    if (totalTargets === 1) {
+        // Single target: original position
+        targetX = 90;
+        targetY = 50;
+    } else {
+        // Multiple targets: circular/star layout around center
+        const centerX = 50;
+        const centerY = 50;
+        const radius = 30; // radius of the circle
+        const angle = (targetIndex / totalTargets) * 2 * Math.PI - Math.PI / 2; // start from top
+        targetX = centerX + radius * Math.cos(angle);
+        targetY = centerY + radius * Math.sin(angle);
+    }
 
     // Color Coding Logic
     const flags = packet.flags || [];
@@ -59,11 +73,15 @@ const PacketVisual = ({ packet, targets, onComplete }) => {
     const isBlocked = packet.blocked === true;
     const targetDistance = isBlocked ? 0.85 : 1.0; // Blocked packets get close to firewall (85%)
 
+    // Determine operator position based on target count
+    const operatorX = totalTargets === 1 ? 10 : 50;
+    const operatorY = 50;
+
     return (
         <motion.div
             initial={{
-                left: isRequest ? '10%' : '90%',
-                top: isRequest ? '50%' : `${targetY}%`,
+                left: isRequest ? `${operatorX}%` : `${targetX}%`,
+                top: isRequest ? `${operatorY}%` : `${targetY}%`,
                 opacity: 0,
                 scale: 0.2,
                 x: '-50%',
@@ -72,20 +90,20 @@ const PacketVisual = ({ packet, targets, onComplete }) => {
             animate={{
                 left: isBlocked
                     ? [
-                        isRequest ? '10%' : '90%',  // Start position
-                        isRequest ? `${10 + (80 * targetDistance)}%` : `${90 - (80 * targetDistance)}%`, // Move to firewall
-                        isRequest ? `${10 + (80 * targetDistance)}%` : `${90 - (80 * targetDistance)}%`, // Pause at firewall
-                        isRequest ? `${10 + (80 * targetDistance)}%` : `${90 - (80 * targetDistance)}%`  // Stay while dropping
+                        isRequest ? `${operatorX}%` : `${targetX}%`,  // Start position
+                        isRequest ? `${operatorX + ((targetX - operatorX) * targetDistance)}%` : `${targetX - ((targetX - operatorX) * targetDistance)}%`, // Move to firewall
+                        isRequest ? `${operatorX + ((targetX - operatorX) * targetDistance)}%` : `${targetX - ((targetX - operatorX) * targetDistance)}%`, // Pause at firewall
+                        isRequest ? `${operatorX + ((targetX - operatorX) * targetDistance)}%` : `${targetX - ((targetX - operatorX) * targetDistance)}%`  // Stay while dropping
                     ]
-                    : isRequest ? `${10 + (80 * targetDistance)}%` : `${90 - (80 * targetDistance)}%`,
+                    : isRequest ? `${targetX}%` : `${operatorX}%`,
                 top: isBlocked
                     ? [
-                        isRequest ? '50%' : `${targetY}%`,  // Start position
-                        `${50 + (targetY - 50) * targetDistance}%`, // Move to firewall
-                        `${50 + (targetY - 50) * targetDistance}%`, // Pause at collision
+                        isRequest ? `${operatorY}%` : `${targetY}%`,  // Start position
+                        `${operatorY + (targetY - operatorY) * targetDistance}%`, // Move to firewall
+                        `${operatorY + (targetY - operatorY) * targetDistance}%`, // Pause at collision
                         '120%' // DROP DOWN
                     ]
-                    : isRequest ? `${50 + (targetY - 50) * targetDistance}%` : `${targetY + (50 - targetY) * targetDistance}%`,
+                    : isRequest ? `${targetY}%` : `${operatorY}%`,
                 opacity: isBlocked ? [0, 1, 1, 1, 0.5, 0] : 1,
                 scale: isBlocked
                     ? [
@@ -133,13 +151,13 @@ const PacketVisual = ({ packet, targets, onComplete }) => {
     );
 };
 
-const AttackerNode = () => {
+const AttackerNode = ({ centered = false }) => {
     return (
-        <div className="absolute left-[10%] top-1/2 transform -translate-x-1/2 -translate-y-1/2 flex flex-col items-center z-10 w-32 h-32">
+        <div className={`absolute ${centered ? 'left-1/2 top-1/2' : 'left-[10%] top-1/2'} transform -translate-x-1/2 -translate-y-1/2 flex flex-col items-center z-10 w-36 h-36`}>
             {/* Simple Glow - Static */}
             <div className="absolute inset-0 bg-blue-500/10 rounded-full blur-xl -z-10"></div>
 
-            <div className="w-24 h-24 bg-gray-900 border-2 border-blue-500/80 rounded-xl flex items-center justify-center shadow-[0_0_30px_rgba(59,130,246,0.4)] relative">
+            <div className="w-30 h-30 bg-gray-900 border-2 border-blue-500/80 rounded-xl flex items-center justify-center shadow-[0_0_30px_rgba(59,130,246,0.4)] relative">
                 <div className="text-center z-10 relative flex flex-col items-center justify-center h-full w-full">
                     {/* Terminal Prompt Icon */}
                     <div className="flex items-center justify-center mb-1">
@@ -222,19 +240,37 @@ const NetworkMap = ({ packets, targets = [], onPacketArrive, manualMode, queueCo
     };
 
     const renderTargets = () => {
-        const displayTargets = targets.length > 0 ? targets : [{ ip: '192.168.1.1' }];
+        const displayTargets = targets.length > 0 ? targets : [{ ip: '192.168.1.1', isAlive: true }];
         const count = displayTargets.length;
-        const step = 80 / count;
+
+        // Scale nodes based on count to fit better
+        const nodeSize = count > 10 ? 'w-16 h-16' : count > 5 ? 'w-20 h-20' : 'w-25 h-25';
+        const iconSize = count > 10 ? 'text-2xl' : count > 5 ? 'text-3xl' : 'text-4xl';
 
         return displayTargets.map((target, i) => {
-            const top = 10 + (step * i) + (step / 2);
+            let left, top;
+
+            if (count === 1) {
+                // Single target: original position
+                left = 90;
+                top = 50;
+            } else {
+                // Multiple targets: circular/star layout
+                const centerX = 50;
+                const centerY = 50;
+                const radius = 30; // radius percentage of canvas
+                const angle = (i / count) * 2 * Math.PI - Math.PI / 2; // start from top
+                left = centerX + radius * Math.cos(angle);
+                top = centerY + radius * Math.sin(angle);
+            }
+
             const isBeingScanned = activePackets.some(p => p.destination.ip === target.ip);
             const isHit = hitTargets[target.ip];
 
             return (
                 <div key={target.ip}
-                    className={`absolute left-[90%] transform -translate-x-1/2 -translate-y-1/2 flex flex-col items-center transition-all duration-500`}
-                    style={{ top: `${top}%` }}
+                    className={`absolute transform -translate-x-1/2 -translate-y-1/2 flex flex-col items-center transition-all duration-500`}
+                    style={{ left: `${left}%`, top: `${top}%` }}
                 >
                     {/* Firewall Shield Bubble - Wraps Everything */}
                     <AnimatePresence>
@@ -270,10 +306,19 @@ const NetworkMap = ({ packets, targets = [], onPacketArrive, manualMode, queueCo
                         {/* Hit Flash Overlay */}
                         <div className={`absolute inset-0 bg-white rounded-xl transition-opacity duration-100 ${isHit ? 'opacity-50' : 'opacity-0'} z-20`}></div>
 
-                        <div className={`w-20 h-20 bg-red-900 border-4 ${isBeingScanned ? 'border-red-400 shadow-[0_0_50px_rgba(248,113,113,0.9),0_0_20px_rgba(239,68,68,1)]' : 'border-red-500 shadow-[0_0_30px_rgba(239,68,68,0.4)]'} rounded-xl flex items-center justify-center transition-shadow duration-300 relative z-10 scale-${isHit ? '110' : '100'}`}>
-                            <span className="text-4xl">🖥️</span>
+                        <div className={`${nodeSize} ${target.isAlive ? 'bg-red-900 border-red-500' : 'bg-gray-800 border-gray-600 opacity-60'} border-4 ${isBeingScanned ? 'border-red-400 shadow-[0_0_50px_rgba(248,113,113,0.9),0_0_20px_rgba(239,68,68,1)]' : target.isAlive ? 'shadow-[0_0_30px_rgba(239,68,68,0.4)]' : 'shadow-none'} rounded-xl flex items-center justify-center transition-shadow duration-300 relative z-10 scale-${isHit ? '110' : '100'}`}>
+                            <span className={iconSize}>{target.isAlive ? '🖥️' : '💀'}</span>
                         </div>
-                        <div className="absolute -top-2 -right-2 w-5 h-5 rounded-full bg-green-500 border-2 border-black shadow-[0_0_15px_rgba(34,197,94,0.8)] z-20"></div>
+                        {/* Status Indicator - Only show for alive hosts */}
+                        {target.isAlive && (
+                            <div className="absolute -top-2 -right-2 w-5 h-5 rounded-full bg-green-500 border-2 border-black shadow-[0_0_15px_rgba(34,197,94,0.8)] z-20"></div>
+                        )}
+                        {/* Dead Host Indicator */}
+                        {!target.isAlive && (
+                            <div className="absolute -bottom-1 left-1/2 transform -translate-x-1/2 bg-gray-900 border border-red-500 rounded px-1.5 py-0.5">
+                                <span className="text-[8px] font-bold text-red-400 tracking-wider">DOWN</span>
+                            </div>
+                        )}
                     </div>
                     <div className={`mt-2 font-mono text-sm relative z-50 ${isBeingScanned ? 'text-red-300 font-bold drop-shadow-[0_0_8px_rgba(248,113,113,0.8)]' : 'text-red-400'}`}>{target.ip}</div>
                 </div>
@@ -322,18 +367,35 @@ const NetworkMap = ({ packets, targets = [], onPacketArrive, manualMode, queueCo
 
             {/* Connection Lines - SVG Layer */}
             <svg className="absolute inset-0 w-full h-full pointer-events-none" style={{ zIndex: 0 }}>
-                {(targets.length > 0 ? targets : [{ ip: '192.168.1.1' }]).map((target, i) => {
-                    const displayTargets = targets.length > 0 ? targets : [{ ip: '192.168.1.1' }];
+                {(targets.length > 0 ? targets : [{ ip: '192.168.1.1', isAlive: true }]).map((target, i) => {
+                    const displayTargets = targets.length > 0 ? targets : [{ ip: '192.168.1.1', isAlive: true }];
                     const count = displayTargets.length;
-                    const step = 80 / count;
-                    const targetY = 10 + (step * i) + (step / 2);
+
+                    let targetX, targetY, operatorX, operatorY;
+                    if (count === 1) {
+                        // Single target: original position
+                        targetX = 90;
+                        targetY = 50;
+                        operatorX = 10;
+                        operatorY = 50;
+                    } else {
+                        // Multiple targets: circular/star layout
+                        const centerX = 50;
+                        const centerY = 50;
+                        const radius = 30;
+                        const angle = (i / count) * 2 * Math.PI - Math.PI / 2;
+                        targetX = centerX + radius * Math.cos(angle);
+                        targetY = centerY + radius * Math.sin(angle);
+                        operatorX = 50;
+                        operatorY = 50;
+                    }
 
                     return (
                         <line
                             key={`line-${i}`}
-                            x1="10%"
-                            y1="50%"
-                            x2="90%"
+                            x1={`${operatorX}%`}
+                            y1={`${operatorY}%`}
+                            x2={`${targetX}%`}
                             y2={`${targetY}%`}
                             stroke="#374151"
                             strokeWidth="2"
@@ -345,7 +407,7 @@ const NetworkMap = ({ packets, targets = [], onPacketArrive, manualMode, queueCo
             </svg>
 
             {/* Attacker Node */}
-            <AttackerNode />
+            <AttackerNode centered={targets.length > 1} />
 
             {/* Target Nodes */}
             {renderTargets()}

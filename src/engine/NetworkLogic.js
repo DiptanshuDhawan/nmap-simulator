@@ -27,8 +27,12 @@ export function handleNetwork(host, packet) {
   const { destination, source, flags, payload } = packet;
   const port = destination.port;
   
-  // ICMP Handling (Ping)
+  // ICMP Handling (Ping) - Check if host is alive
   if (flags.includes('ECHO')) {
+      // Dead hosts don't respond to pings
+      if (!host.isAlive) {
+          return null; // No response = host is down
+      }
       return new Packet(destination, source, ['REPLY']);
   }
 

@@ -70,7 +70,7 @@ const ScanBuilder = ({ onScan }) => {
                     <select
                         value={scanType}
                         onChange={(e) => setScanType(e.target.value)}
-                        className="bg-gray-900 border border-gray-600 text-white px-3 py-2 rounded focus:outline-none focus:border-blue-500"
+                        className="bg-gray-900 border border-gray-600 text-white px-3 py-2 rounded focus:outline-none focus:border-blue-500 font-mono"
                     >
                         <option value="-sS">TCP SYN Scan (-sS)</option>
                         <option value="-sT">Connect Scan (-sT)</option>
@@ -92,18 +92,6 @@ const ScanBuilder = ({ onScan }) => {
                         <span>T0</span><span>T3</span><span>T5</span>
                     </div>
                 </div>
-            </div>
-
-            <div className="flex flex-wrap gap-2">
-                {Object.keys(options).map(key => (
-                    <button
-                        key={key}
-                        onClick={() => setOptions(prev => ({ ...prev, [key]: !prev[key] }))}
-                        className={`px-3 py-1 rounded text-xs font-mono border ${options[key] ? 'bg-blue-900 border-blue-500 text-blue-100' : 'bg-gray-900 border-gray-600 text-gray-400'}`}
-                    >
-                        -{key}
-                    </button>
-                ))}
             </div>
 
             <div className="mt-2 bg-black rounded p-3 font-mono text-green-400 text-sm border border-gray-700">

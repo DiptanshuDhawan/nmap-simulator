@@ -7,6 +7,7 @@ export class Host {
     this.firewallEnabled = false; // Firewall toggle
     this.lastPacketTime = 0; // Track last packet arrival for rate limiting
     this.blockedCount = 0; // Track blocked packets
+    this.isAlive = true; // Host status (true = responding, false = dead/down)
     this.inbox = [];
   }
 
