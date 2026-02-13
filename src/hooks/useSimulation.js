@@ -288,7 +288,17 @@ export const useSimulation = () => {
   const updateExplanation = (packet, direction) => {
      let text = '';
      const flagStr = packet.flags.join(',');
-     if (direction === 'send') {
+     
+     // Enhanced ICMP descriptions
+     if (packet.flags.includes('ECHO')) {
+         text = direction === 'send' 
+             ? `📤 Sending ICMP Echo Request (Type 8) to ${packet.destination.ip} - Host discovery probe`
+             : `📥 Received ICMP Echo Request from ${packet.source.ip}`;
+     } else if (packet.flags.includes('REPLY')) {
+         text = direction === 'send'
+             ? `📤 Sending ICMP Echo Reply (Type 0) to ${packet.destination.ip}`
+             : `📥 Received ICMP Echo Reply from ${packet.source.ip} ✅ Host is UP`;
+     } else if (direction === 'send') {
          text = `📤 Sending ${flagStr} to ${packet.destination.ip}:${packet.destination.port}`;
      } else {
          text = `📥 Received ${flagStr} from ${packet.source.ip}:${packet.source.port}`;
@@ -312,7 +322,22 @@ export const useSimulation = () => {
       if (!scanStartedRef.current) return; 
 
       // Manually format since object spread loses toString prototype
-      const formatted = `${packet.source.ip}:${packet.source.port} -> ${packet.destination.ip}:${packet.destination.port} [${packet.flags.join(',')}]`;
+      // Enhanced formatting for ICMP packets
+      let flagsDisplay = packet.flags.join(',');
+      let protocolType = 'TCP';
+      
+      // Detect ICMP packets and enhance description
+      if (packet.flags.includes('ECHO')) {
+          protocolType = 'ICMP';
+          flagsDisplay = 'ICMP Type 8 (Echo Request)';
+      } else if (packet.flags.includes('REPLY')) {
+          protocolType = 'ICMP';
+          flagsDisplay = 'ICMP Type 0 (Echo Reply)';
+      } else if (packet.flags.includes('UDP')) {
+          protocolType = 'UDP';
+      }
+      
+      const formatted = `${packet.source.ip}:${packet.source.port} -> ${packet.destination.ip}:${packet.destination.port} [${flagsDisplay}]`;
       
       // LOGGING: Only log if NOT blocked
       if (!packet.blocked) {

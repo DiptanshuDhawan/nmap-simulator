@@ -30,10 +30,16 @@ const PacketLog = ({ logs }) => {
             flagColor = 'text-yellow-400'; // SYN = Yellow
         } else if (flags.includes('ACK')) {
             flagColor = 'text-blue-400'; // ACK = Blue
+        } else if (flags.includes('ICMP Type 8') || flags.includes('Echo Request')) {
+            flagColor = 'text-cyan-400'; // ICMP Echo Request = Cyan
+        } else if (flags.includes('ICMP Type 0') || flags.includes('Echo Reply')) {
+            flagColor = 'text-purple-400'; // ICMP Echo Reply = Purple
         } else if (flags.includes('ECHO')) {
             flagColor = 'text-cyan-400'; // ECHO = Cyan
         } else if (flags.includes('REPLY')) {
             flagColor = 'text-purple-400'; // REPLY = Purple
+        } else if (flags.includes('UDP')) {
+            flagColor = 'text-indigo-400'; // UDP = Indigo
         }
 
         return (
