@@ -110,23 +110,37 @@ export const useSimulation = () => {
       const newTargetsList = [];
 
       ips.forEach((ip, index) => {
-          const os = index % 2 === 0 ? 'Linux 5.4' : 'Windows 10';
-          const host = new Host(ip, 'target', os);
-          
-          // Randomly set some hosts as dead (25% chance of being down)
-          host.isAlive = Math.random() > 0.25;
-          
-          if (ip.endsWith('.1') || ip.endsWith('.100') || ip.endsWith('.254')) {
-              host.addPort(80, 'open', 'http');
-              host.addPort(443, 'closed', 'https');
-              host.addPort(22, 'filtered', 'ssh');
-              host.addPort(53, 'open', 'domain'); 
+          // CHECK FOR EXISTING HOST STATE
+          const existingHost = targetsRef.current[ip];
+
+          let host;
+          if (existingHost) {
+              // PRESERVE STATE: Use the existing host object
+              // This ensures if it was dead, it stays dead. If it had specific ports, they remain.
+              host = existingHost; 
+              
+              // Ensure we re-bind it to the new targets list for this specific scan
+              // (In case the range overlaps but isn't identical, though here we are rebuilding the map)
           } else {
-              host.addPort(135, 'open', 'msrpc');
-              host.addPort(445, 'open', 'microsoft-ds');
+              // CREATE NEW HOST
+              const os = index % 2 === 0 ? 'Linux 5.4' : 'Windows 10';
+              host = new Host(ip, 'target', os);
+              
+              // Randomly set some hosts as dead (25% chance of being down)
+              host.isAlive = Math.random() > 0.25;
+              
+              if (ip.endsWith('.1') || ip.endsWith('.100') || ip.endsWith('.254')) {
+                  host.addPort(80, 'open', 'http');
+                  host.addPort(443, 'closed', 'https');
+                  host.addPort(22, 'filtered', 'ssh');
+                  host.addPort(53, 'open', 'domain'); 
+              } else {
+                  host.addPort(135, 'open', 'msrpc');
+                  host.addPort(445, 'open', 'microsoft-ds');
+              }
           }
           
-          // Sync firewall state
+          // Sync firewall state (always sync to current global setting)
           host.firewallEnabled = firewallEnabled;
           
           newTargets[ip] = host;
@@ -449,7 +463,7 @@ export const useSimulation = () => {
     setManualMode(false);
     setQueueCount(0);
     setTargets([]); 
-    targetsRef.current = {}; 
+    targetsRef.current = {}; // CRITICAL: Clear this to allow new random generation on next scan 
     
     // Clear Ref states
     schedulerRef.current.clear();

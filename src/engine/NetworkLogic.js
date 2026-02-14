@@ -1,6 +1,12 @@
 import { Packet } from './Packet';
 
 export function handleNetwork(host, packet) {
+  // GLOBAL DEAD HOST CHECK
+  // If host is down, it should NOT respond to anything (or at least not typically)
+  if (!host.isAlive) {
+      return null;
+  }
+
   // FIREWALL LOGIC
   if (host.firewallEnabled && packet.source.type === 'attacker') {
      const now = Date.now();
@@ -29,10 +35,6 @@ export function handleNetwork(host, packet) {
   
   // ICMP Handling (Ping) - Check if host is alive
   if (flags.includes('ECHO')) {
-      // Dead hosts don't respond to pings
-      if (!host.isAlive) {
-          return null; // No response = host is down
-      }
       return new Packet(destination, source, ['REPLY']);
   }
 
